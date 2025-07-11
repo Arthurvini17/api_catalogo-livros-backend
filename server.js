@@ -32,6 +32,9 @@ const server = http.createServer((req, res) => {
 
     if (method === "GET" && url.startsWith('/livros')) {
         const id = url.split('/')[2];
+        const livro = livros.find(l => l.id === id);
+
+        return res.end(JSON.stringify(livros))
 
     }
 
@@ -41,29 +44,26 @@ const server = http.createServer((req, res) => {
 
         req.on('data', chunk => (body += chunk));
         req.on('end', () => {
-            const data = JSON.parse(body);
+            try {
+                const data = JSON.parse(body);
+                const anoPublicacao = Number(data.anoPublicacao);
 
-            const anoPublicacao = data.anoPublicacao;
+                (isNaN(anoPublicacao) || anoPublicacao <= 1441) &&
+                    (() => { throw new Error('Ano de publicação inválido.'); })();
 
+                const livro = { id: randomUUID(), ...data };
+                livros.push(livro);
 
-            const isAnoValido = [true].includes(data.anoPublicacao >= 1441);
-
-            if (!isAnoValido) {
+                res.statusCode = 201;
+                return res.end(JSON.stringify(livro));
+            } catch (error) {
                 res.statusCode = 400;
-                return res.end(JSON.stringify({ message: 'Ano de publicação inválido. ' }));
+                return res.end(JSON.stringify({ message: error.message }));
             }
-
-
-            const livro = { id: randomUUID(), ...data };
-            livros.push(livro);
-
-            res.statusCode = 201;
-            return res.end(JSON.stringify(livro));
         });
 
         return;
     }
-
     //atualizar livro
     if (method === 'PUT' && url.startsWith('/livros/')) {
         const id = url.split('/')[2];
@@ -84,10 +84,7 @@ const server = http.createServer((req, res) => {
 
         return;
     }
-
     // Rota não encontrada
-
-
     if (method === 'DELETE' && url.startsWith('/livros/')) {
         const id = url.split('/')[2];
         const index = livros.findIndex(l => l.id === id);
@@ -103,10 +100,6 @@ const server = http.createServer((req, res) => {
     res.statusCode = 404;
     res.end(JSON.stringify({ erro: 'Rota não encontrada' }));
 });
-
-
-
-
 
 
 
